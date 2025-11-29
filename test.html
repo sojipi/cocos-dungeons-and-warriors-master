@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>随机迷宫测试</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .maze {
+        display: grid;
+        gap: 1px;
+        background-color: #ccc;
+        margin: 20px 0;
+      }
+      .cell {
+        width: 20px;
+        height: 20px;
+        background-color: #fff;
+      }
+      .wall {
+        background-color: #000;
+      }
+      .start {
+        background-color: #0f0;
+      }
+      .end {
+        background-color: #f00;
+      }
+      .path {
+        background-color: #0ff;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>随机迷宫测试</h1>
+    <div id="maze-container"></div>
+
+    <script src="https://unpkg.com/tile-map-generator@1.0.0/dist/tile-map-generator.min.js"></script>
+    <script>
+      // 迷宫配置
+      const config = {
+        width: 15,
+        height: 15,
+        cellSize: 20,
+        wallColor: "#000",
+        pathColor: "#fff",
+        startColor: "#0f0",
+        endColor: "#f00",
+      };
+
+      // 生成迷宫
+      const maze = generateMaze(config.width, config.height);
+
+      // 渲染迷宫
+      renderMaze(maze, config);
+
+      function generateMaze(width, height) {
+        // 使用深度优先搜索算法生成迷宫
+        const maze = Array(height)
+          .fill()
+          .map(() => Array(width).fill(1));
+        const stack = [];
+        const startX = 0;
+        const startY = 0;
+        const endX = width - 1;
+        const endY = height - 1;
+
+        // 标记起点
+        maze[startY][startX] = 2;
+        stack.push([startX, startY]);
+
+        // 方向：上、右、下、左
+        const directions = [
+          [0, -2],
+          [2, 0],
+          [0, 2],
+          [-2, 0],
+        ];
+
+        while (stack.length > 0) {
+          const [x, y] = stack.pop();
+          const neighbors = [];
+
+          // 检查所有方向的邻居
+          for (const [dx, dy] of directions) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (
+              nx >= 0 &&
+              nx < width &&
+              ny >= 0 &&
+              ny < height &&
+              maze[ny][nx] === 1
+            ) {
+              neighbors.push([nx, ny, dx, dy]);
+            }
+          }
+
+          if (neighbors.length > 0) {
+            stack.push([x, y]);
+            const [nx, ny, dx, dy] =
+              neighbors[Math.floor(Math.random() * neighbors.length)];
+            maze[ny][nx] = 0;
+            maze[y + dy / 2][x + dx / 2] = 0;
+            stack.push([nx, ny]);
+          }
+        }
+
+        // 标记终点
+        maze[endY][endX] = 3;
+
+        return maze;
+      }
+
+      function renderMaze(maze, config) {
+        const container = document.getElementById("maze-container");
+        container.style.gridTemplateColumns = `repeat(${config.width}, ${config.cellSize}px)`;
+
+        for (let y = 0; y < maze.length; y++) {
+          for (let x = 0; x < maze[y].length; x++) {
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            cell.style.width = `${config.cellSize}px`;
+            cell.style.height = `${config.cellSize}px`;
+
+            if (maze[y][x] === 1) {
+              cell.classList.add("wall");
+            } else if (maze[y][x] === 2) {
+              cell.classList.add("start");
+            } else if (maze[y][x] === 3) {
+              cell.classList.add("end");
+            } else {
+              cell.classList.add("path");
+            }
+
+            container.appendChild(cell);
+          }
+        }
+      }
+    </script>
+  </body>
+</html>

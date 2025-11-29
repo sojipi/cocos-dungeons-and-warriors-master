@@ -45,30 +45,23 @@ export class Player extends MoveableEntity {
             parentNode = parentNode.parent;
         }
         
-        if (!gameComponent) {
-            console.error('[Player] Game component not found');
+        // 从全局获取当前生成的关卡
+        const level = (globalThis as any).currentLevel;
+        
+        if (!level) {
+            console.error('[Player] Current level not found');
             // 使用默认值
             await super.init({ x: 2, y: 8, fsm, state: ENTITY_STATE_ENUM.IDLE, direction: DIRECTION_ENUM.TOP });
         } else {
-            const levelIndex = gameComponent.level;
-            const levelKey = `level${levelIndex}`;
-            const level = Levels[levelKey];
-            
-            if (!level) {
-                console.error('[Player] Level not found:', levelKey);
-                // 使用默认值
-                await super.init({ x: 2, y: 8, fsm, state: ENTITY_STATE_ENUM.IDLE, direction: DIRECTION_ENUM.TOP });
-            } else {
-                const playerInfo = level.player;
-                console.log('[Player] Initializing player with info:', playerInfo);
-                await super.init({ 
-                    x: playerInfo.x, 
-                    y: playerInfo.y, 
-                    fsm, 
-                    state: playerInfo.state, 
-                    direction: playerInfo.direction 
-                });
-            }
+            const playerInfo = level.player;
+            console.log('[Player] Initializing player with info:', playerInfo);
+            await super.init({ 
+                x: playerInfo.x, 
+                y: playerInfo.y, 
+                fsm, 
+                state: playerInfo.state, 
+                direction: playerInfo.direction 
+            });
         }
         
         // 监听移动结束事件，用于检测是否到达门的位置
@@ -101,12 +94,11 @@ export class Player extends MoveableEntity {
             return;
         }
         
-        const levelIndex = gameComponent.level;
-        const levelKey = `level${levelIndex}`;
-        const level = Levels[levelKey];
+        // 从全局获取当前生成的关卡
+        const level = (globalThis as any).currentLevel;
         
         if (!level) {
-            console.error('[Player] Level not found:', levelKey);
+            console.error('[Player] Current level not found');
             return;
         }
         

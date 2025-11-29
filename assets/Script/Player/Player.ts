@@ -1,9 +1,11 @@
 import { _decorator, Component, Sprite, UITransform, math } from 'cc';
-import { CONTROLLER_ENUM, DIRECTION_ENUM, ENTITY_STATE_ENUM, PARAMS_NAME_ENUM } from '../Enum';
+import { CONTROLLER_ENUM, DIRECTION_ENUM, ENTITY_STATE_ENUM, PARAMS_NAME_ENUM, EVENT_ENUM, ENTITY_TYPE_ENUM } from '../Enum';
 import MoveableEntity from '../Base/MoveableEntity';
 import { PlayerState } from './PlayerState';
 import MapTitles from '../Map/MapTiles';
 import Tile from '../Map/Tile';
+import Levels from '../Levels';
+import EventManager from '../EventManager';
 const { ccclass, property } = _decorator;
 
 /**
@@ -30,7 +32,92 @@ export class Player extends MoveableEntity {
 
         const fsm = await this.addComponent(PlayerState).init();
 
-        await super.init({ x: 2, y: 8, fsm, state: ENTITY_STATE_ENUM.IDLE, direction: DIRECTION_ENUM.TOP });
+        // 获取当前关卡的玩家初始位置信息
+        let parentNode = this.node.parent;
+        let gameComponent = null;
+        
+        // 向上遍历节点树查找Game组件
+        while (parentNode) {
+            gameComponent = parentNode.getComponent('Game');
+            if (gameComponent) {
+                break;
+            }
+            parentNode = parentNode.parent;
+        }
+        
+        if (!gameComponent) {
+            console.error('[Player] Game component not found');
+            // 使用默认值
+            await super.init({ x: 2, y: 8, fsm, state: ENTITY_STATE_ENUM.IDLE, direction: DIRECTION_ENUM.TOP });
+        } else {
+            const levelIndex = gameComponent.level;
+            const levelKey = `level${levelIndex}`;
+            const level = Levels[levelKey];
+            
+            if (!level) {
+                console.error('[Player] Level not found:', levelKey);
+                // 使用默认值
+                await super.init({ x: 2, y: 8, fsm, state: ENTITY_STATE_ENUM.IDLE, direction: DIRECTION_ENUM.TOP });
+            } else {
+                const playerInfo = level.player;
+                console.log('[Player] Initializing player with info:', playerInfo);
+                await super.init({ 
+                    x: playerInfo.x, 
+                    y: playerInfo.y, 
+                    fsm, 
+                    state: playerInfo.state, 
+                    direction: playerInfo.direction 
+                });
+            }
+        }
+        
+        // 监听移动结束事件，用于检测是否到达门的位置
+        EventManager.on(EVENT_ENUM.PLAYER_MOVE_END, this.checkArrivedDoor, this);
+    }
+
+    onDestroy() {
+        super.onDestroy();
+        EventManager.off(EVENT_ENUM.PLAYER_MOVE_END, this);
+    }
+
+    // 检查是否到达门的位置
+    private checkArrivedDoor() {
+        // 获取当前关卡信息
+        // 通过查找父节点来获取Game组件
+        let parentNode = this.node.parent;
+        let gameComponent = null;
+        
+        // 向上遍历节点树查找Game组件
+        while (parentNode) {
+            gameComponent = parentNode.getComponent('Game');
+            if (gameComponent) {
+                break;
+            }
+            parentNode = parentNode.parent;
+        }
+        
+        if (!gameComponent) {
+            console.error('[Player] Game component not found');
+            return;
+        }
+        
+        const levelIndex = gameComponent.level;
+        const levelKey = `level${levelIndex}`;
+        const level = Levels[levelKey];
+        
+        if (!level) {
+            console.error('[Player] Level not found:', levelKey);
+            return;
+        }
+        
+        const door = level.door;
+        console.log('[Player] Checking if player arrived at door. Player position:', this.x, this.y, 'Door position:', door.x, door.y);
+        
+        // 检查玩家是否在门的位置
+        if (this.x === door.x && this.y === door.y) {
+            console.log('[Player] Player arrived at door, emitting NEXT_LEVEL event');
+            EventManager.emit(EVENT_ENUM.NEXT_LEVEL);
+        }
     }
 
     // set state(newState: ENTITY_STATE_ENUM) {

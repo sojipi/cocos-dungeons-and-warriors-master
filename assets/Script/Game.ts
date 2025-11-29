@@ -4,6 +4,7 @@ import EventManager from './EventManager';
 import { MapLoader } from './Map/MapLoader';
 import { Player } from './Player/Player';
 import { WoodenSkeleton } from './WoodenSkeleton/WoodenSkeleton';
+import Levels from './Levels';
 const { ccclass, property } = _decorator;
 
 @ccclass('Game')
@@ -83,11 +84,24 @@ export class Game extends Component {
     }
 
     private async generateWoodenSkeleton() {
-        console.log('Generating wooden skeleton');
-        const node = new Node();
-        node.layer = 1 << 25;
-        node.parent = this.map;
-        await node.addComponent(WoodenSkeleton).init();
-        console.log('Wooden skeleton generated');
+        console.log('Generating wooden skeleton(s)');
+        const levelKey = `level${this.level}`;
+        const level = Levels[levelKey];
+        
+        if (!level) {
+            console.error('[Game] Level not found:', levelKey);
+            return;
+        }
+        
+        // 为每个敌人创建一个节点
+        for (let i = 0; i < level.enemies.length; i++) {
+            const enemyInfo = level.enemies[i];
+            console.log('[Game] Generating enemy', i, 'at position:', enemyInfo.x, enemyInfo.y);
+            const node = new Node();
+            node.layer = 1 << 25;
+            node.parent = this.map;
+            await node.addComponent(WoodenSkeleton).init();
+        }
+        console.log('Wooden skeleton(s) generated');
     }
 }

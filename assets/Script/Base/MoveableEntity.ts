@@ -7,6 +7,7 @@ export default abstract class MoveableEntity extends Entity {
     protected target_x = 0;
     protected target_y = 0;
     private spped = 1 / 10;
+    private isMoving = false;
 
     protected async init(params: {
         x: number;
@@ -25,6 +26,11 @@ export default abstract class MoveableEntity extends Entity {
     }
 
     protected async move(ctrl: CONTROLLER_ENUM) {
+        // 如果正在移动，则忽略新的移动指令
+        if (this.isMoving) {
+            return;
+        }
+        
         switch (ctrl) {
             case CONTROLLER_ENUM.TOP:
                 this.target_y -= 1;
@@ -43,14 +49,17 @@ export default abstract class MoveableEntity extends Entity {
                 var direction = DIRECTION_ORDER_ENUM[this.direction];
                 direction = Math.abs(direction + 4 - 1) % 4;
                 this.direction = DIRECTION_ORDER_ENUM[direction] as DIRECTION_ENUM;
-                break;
+                return; // 转向不触发移动结束事件
             case CONTROLLER_ENUM.TURNRIGHT:
                 this.state = ENTITY_STATE_ENUM.TURNRIGHT;
                 var direction = DIRECTION_ORDER_ENUM[this.direction];
                 direction = (direction + 1) % 4;
                 this.direction = DIRECTION_ORDER_ENUM[direction] as DIRECTION_ENUM;
-                break;
+                return; // 转向不触发移动结束事件
         }
+        
+        // 标记为正在移动
+        this.isMoving = true;
     }
 
     protected update(dt: number): void {
@@ -71,6 +80,13 @@ export default abstract class MoveableEntity extends Entity {
         if (Math.abs(this.target_x - this.x) <= this.spped && Math.abs(this.target_y - this.y) <= this.spped) {
             this.x = this.target_x;
             this.y = this.target_y;
+            
+            // 如果之前在移动，现在停止了，则触发移动结束事件
+            if (this.isMoving) {
+                this.isMoving = false;
+                console.log('[MoveableEntity] Player move end, emitting PLAYER_MOVE_END event');
+                EventManager.emit(EVENT_ENUM.PLAYER_MOVE_END);
+            }
         }
 
         // 将游戏坐标转换位实际坐标

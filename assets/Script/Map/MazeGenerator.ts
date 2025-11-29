@@ -69,14 +69,32 @@ export class MazeGenerator {
         const visited: boolean[][] = Array(this.width).fill(null).map(() => Array(this.height).fill(false));
         this.carvePassage(1, 1, visited);
 
+        // 确保有入口（左边界中间位置）
+        const entranceX = 0;
+        const entranceY = Math.floor(this.height / 2);
+        this.maze[entranceX][entranceY] = { src: null, type: null };
+        
+        // 确保入口前有地板连接
+        if (entranceX < this.width - 1) {
+            this.maze[entranceX + 1][entranceY] = this.createFloorTile();
+        }
+
         // 确保有出口（右边界中间位置）
-        const exitX = this.width - 1;
+        const exitX = this.width - 2;
         const exitY = Math.floor(this.height / 2);
         this.maze[exitX][exitY] = { src: null, type: null };
         
         // 确保出口前有地板连接
         if (exitX > 0) {
             this.maze[exitX - 1][exitY] = this.createFloorTile();
+        }
+
+        // 清除右边和下边的额外障碍物
+        for (let x = 0; x < this.width; x++) {
+            this.maze[x][this.height - 1] = { src: null, type: null };
+        }
+        for (let y = 0; y < this.height; y++) {
+            this.maze[this.width - 1][y] = { src: null, type: null };
         }
 
         return this.maze;
@@ -106,11 +124,11 @@ export class MazeGenerator {
     private createWallTile(x: number, y: number): ITile {
         // 根据位置选择墙体类型
         if (x === 0 && y === 0) return { src: 16, type: TILE_TYPE_ENUM.WALL_LEFT_TOP };
-        if (x === this.width - 1 && y === 0) return { src: 15, type: TILE_TYPE_ENUM.WALL_RIGHT_TOP };
-        if (x === 0 && y === this.height - 1) return { src: 13, type: TILE_TYPE_ENUM.WALL_LEFT_BOTTOM };
-        if (x === this.width - 1 && y === this.height - 1) return { src: 14, type: TILE_TYPE_ENUM.WALL_RIGHT_BOTTOM };
-        if (x === 0 || x === this.width - 1) return { src: 5, type: TILE_TYPE_ENUM.WALL_COLUMN };
-        if (y === 0 || y === this.height - 1) return { src: 9, type: TILE_TYPE_ENUM.WALL_ROW };
+        if (x === this.width - 2 && y === 0) return { src: 15, type: TILE_TYPE_ENUM.WALL_RIGHT_TOP };
+        if (x === 0 && y === this.height - 2) return { src: 13, type: TILE_TYPE_ENUM.WALL_LEFT_BOTTOM };
+        if (x === this.width - 2 && y === this.height - 2) return { src: 14, type: TILE_TYPE_ENUM.WALL_RIGHT_BOTTOM };
+        if (x === 0 || x === this.width - 2) return { src: 5, type: TILE_TYPE_ENUM.WALL_COLUMN };
+        if (y === 0 || y === this.height - 2) return { src: 9, type: TILE_TYPE_ENUM.WALL_ROW };
         
         // 内部墙体
         return { src: Math.floor(Math.random() * 3) + 5, type: TILE_TYPE_ENUM.WALL_COLUMN };
@@ -121,7 +139,12 @@ export class MazeGenerator {
     }
 
     // 生成完整关卡（包含玩家、敌人、门）
-    generateLevel(config: IMazeConfig): ILevel {
+    generateLevel(): ILevel {
+        const config: IMazeConfig = {
+            width: 10,
+            height: 10,
+            ensureReachable: true
+        };
         const mapInfo = config.ensureReachable ? 
             this.generateBacktrackMaze() : 
             this.generateRandomMaze(config.wallDensity || 0.3);
@@ -129,9 +152,33 @@ export class MazeGenerator {
         // 寻找可放置实体的地板位置
         const floorPositions = this.findFloorPositions();
         
-        // 随机选择位置放置游戏元素
-        const playerPos = floorPositions[Math.floor(Math.random() * floorPositions.length)];
-        const doorPos = floorPositions[Math.floor(Math.random() * floorPositions.length)];
+        // 将玩家放在入口附近，门放在出口附近
+        const entranceY = Math.floor(this.height / 2);
+        const exitY = Math.floor(this.height / 2);
+        
+        // 找到入口附近的地板位置（玩家出生点）
+        let playerPos = floorPositions.find(pos => pos.x === 1 && pos.y === entranceY);
+        if (!playerPos) {
+            // 如果没有找到，选择离入口最近的地板
+            playerPos = floorPositions.reduce((closest, pos) => {
+                const dist = Math.abs(pos.x - 1) + Math.abs(pos.y - entranceY);
+                const closestDist = Math.abs(closest.x - 1) + Math.abs(closest.y - entranceY);
+                return dist < closestDist ? pos : closest;
+            }, floorPositions[0]);
+        }
+        
+        // 找到出口附近的地板位置（门的位置）
+        let doorPos = floorPositions.find(pos => pos.x === this.width - 2 && pos.y === exitY);
+        if (!doorPos) {
+            // 如果没有找到，选择离出口最近的地板
+            doorPos = floorPositions.reduce((closest, pos) => {
+                const dist = Math.abs(pos.x - (this.width - 2)) + Math.abs(pos.y - exitY);
+                const closestDist = Math.abs(closest.x - (this.width - 2)) + Math.abs(closest.y - exitY);
+                return dist < closestDist ? pos : closest;
+            }, floorPositions[0]);
+        }
+        
+        // 随机选择位置放置敌人
         const enemyPositions = this.selectRandomPositions(floorPositions, 1, [playerPos, doorPos]);
 
         const player: IEntity = {

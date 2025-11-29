@@ -1,8 +1,9 @@
 import { _decorator, Component, Node, Label, labelAssembler, Color, LabelComponent } from 'cc';
 import * as Common from '../Common';
-import Levels from '../Levels';
+import Levels, { ILevel } from '../Levels';
 import MapTitles from './MapTiles';
 import Tile from './Tile';
+import { MazeGenerator, IMazeConfig } from './MazeGenerator';
 const { ccclass, property } = _decorator;
 
 /**
@@ -31,18 +32,32 @@ export class MapLoader extends Component {
     }
 
     async initLevel(level = 1) {
-        console.log('[MapLoader] Initializing level:', level);
+        // 总是加载随机迷宫
+        return this.initRandomMaze();
+    }
+
+    async initRandomMaze(config?: IMazeConfig) {
+        console.log('[MapLoader] Initializing random maze');
         MapTitles.clean();
         // 加载地图
         const imgs = await Common.loadResDir('texture/tile/tile');
         console.log('[MapLoader] Loaded tile images, count:', imgs.length);
-        const levelKey = `level${level}`;
-        console.log('[MapLoader] Checking if level exists:', levelKey, 'Available levels:', Object.keys(Levels));
-        if (!Levels[levelKey]) {
-            console.error('[MapLoader] Level not found:', levelKey);
-            return this;
-        }
-        const { mapInfo } = Levels[`level${level}`];
+        
+        // 使用默认配置或传入的配置
+        const mazeConfig = {
+            width: 10, // 与level1相同的宽度
+            height: 10, // 与level1相同的高度
+            ensureReachable: true, // 确保所有区域可达
+            ...config
+        };
+        
+        // 生成随机迷宫
+        const mazeGenerator = new MazeGenerator(mazeConfig);
+        const randomLevel = mazeGenerator.generateLevel();
+        const { mapInfo } = randomLevel;
+        
+        // 保存生成的关卡以便其他组件使用
+        (globalThis as any).currentLevel = randomLevel;
         console.log('[MapLoader] Map info size:', mapInfo.length, 'x', (mapInfo[0] || []).length);
         for (let x = 0; x < mapInfo.length; x++) {
             const column = mapInfo[x];

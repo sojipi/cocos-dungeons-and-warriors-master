@@ -85,11 +85,11 @@ export class Game extends Component {
 
     private async generateWoodenSkeleton() {
         console.log('Generating wooden skeleton(s)');
-        const levelKey = `level${this.level}`;
-        const level = Levels[levelKey];
+        // 从全局获取当前生成的关卡
+        const level = (globalThis as any).currentLevel;
         
         if (!level) {
-            console.error('[Game] Level not found:', levelKey);
+            console.error('[Game] Current level not found');
             return;
         }
         

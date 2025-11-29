@@ -2,6 +2,7 @@ import { _decorator, Component, Node, math, TERRAIN_SOUTH_INDEX } from 'cc';
 import { EVENT_ENUM } from './Enum';
 import EventManager from './EventManager';
 import { MapLoader } from './Map/MapLoader';
+import { MazeGenerator } from './Map/MazeGenerator';
 import { Player } from './Player/Player';
 import { WoodenSkeleton } from './WoodenSkeleton/WoodenSkeleton';
 import Levels from './Levels';
@@ -12,7 +13,7 @@ export class Game extends Component {
     stage: Node;
     map: Node;
     player: Node;
-    level = 1;
+    level = 0;
 
     protected onLoad(): void {
         console.log('Game onLoad, registering NEXT_LEVEL event listener');
@@ -65,7 +66,13 @@ export class Game extends Component {
         const node = new Node();
         node.layer = 1 << 25;
         node.parent = this.stage;
-        const loader = await node.addComponent(MapLoader).initLevel(this.level);
+        const loader = node.addComponent(MapLoader);
+
+        // 生成随机迷宫
+        const mazeGenerator = new MazeGenerator({ width: 15, height: 15, ensureReachable: true });
+        const randomLevel = mazeGenerator.generateLevel();
+        await loader.initLevelData(randomLevel);
+
         const x = loader.row * 55 * 0.5 * -1;
         const y = loader.column * 55 * 0.5 + 80;
         node.position = new math.Vec3(x, y);
@@ -85,18 +92,11 @@ export class Game extends Component {
 
     private async generateWoodenSkeleton() {
         console.log('Generating wooden skeleton(s)');
-        const levelKey = `level${this.level}`;
-        const level = Levels[levelKey];
-        
-        if (!level) {
-            console.error('[Game] Level not found:', levelKey);
-            return;
-        }
-        
         // 为每个敌人创建一个节点
-        for (let i = 0; i < level.enemies.length; i++) {
-            const enemyInfo = level.enemies[i];
-            console.log('[Game] Generating enemy', i, 'at position:', enemyInfo.x, enemyInfo.y);
+        // 由于现在使用随机迷宫，我们需要从迷宫数据中获取敌人信息
+        // 这里简化处理，直接生成一些随机敌人
+        const enemyCount = 3;
+        for (let i = 0; i < enemyCount; i++) {
             const node = new Node();
             node.layer = 1 << 25;
             node.parent = this.map;
